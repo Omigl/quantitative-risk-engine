@@ -1,0 +1,143 @@
+# =============================================================================
+# Portfolio Configuration — Quantitative Risk & Performance Analytics Engine
+# =============================================================================
+# All parameters are externalized here. No hardcoded state in Python scripts.
+
+# --- Portfolio Holdings ---
+portfolio:
+  tickers:
+    - AAPL
+    - MSFT
+    - GOOGL
+    - AMZN
+    - NVDA
+    - JPM
+    - JNJ
+    - V
+  shares:
+    AAPL: 150
+    MSFT: 120
+    GOOGL: 80
+    AMZN: 60
+    NVDA: 200
+    JPM: 100
+    JNJ: 90
+    V: 110
+
+  # Sector mappings for exposure analysis
+  sectors:
+    AAPL: Technology
+    MSFT: Technology
+    GOOGL: Technology
+    AMZN: Consumer Discretionary
+    NVDA: Technology
+    JPM: Financials
+    JNJ: Healthcare
+    V: Financials
+
+# --- Data Ingestion Parameters ---
+data:
+  lookback_years: 3
+  forward_fill_limit: 5
+  anomaly_threshold_pct: 50.0
+  missing_data_alert_pct: 5.0
+
+# --- Performance Analytics Parameters ---
+performance:
+  risk_free_rate: 0.0525
+  trading_days_per_year: 252
+
+# --- Risk Parameters ---
+risk:
+  confidence_levels:
+    - 0.95
+    - 0.99
+  var_lookback_days: 252
+  holding_period_days: 1
+
+# --- Monte Carlo Simulation Parameters ---
+monte_carlo:
+  n_simulations: 10000
+  random_seed: 42
+
+# --- Risk Monitoring Parameters ---
+monitoring:
+  rolling_window_days: 63              # ~3 months rolling window
+  rolling_windows:                     # Multiple windows for comparison
+    - 21                               # 1 month
+    - 63                               # 3 months
+    - 126                              # 6 months
+
+# --- Risk Limits ---
+risk_limits:
+  # VaR limits (maximum allowable dollar VaR)
+  var_limits:
+    VaR_95_max: 50000.0                # Max 1-day 95% VaR in dollars
+    VaR_99_max: 75000.0                # Max 1-day 99% VaR in dollars
+
+  # Exposure limits (as fractions of portfolio)
+  exposure_limits:
+    max_single_name_weight: 0.25       # No single asset > 25% of portfolio
+    max_sector_weight: 0.50            # No single sector > 50% of portfolio
+
+  # Concentration limits
+  concentration_limits:
+    max_hhi: 0.25                      # Herfindahl-Hirschman Index threshold
+    max_top3_weight: 0.60              # Top 3 holdings must be < 60%
+
+# --- Stress Scenario Definitions ---
+stress_scenarios:
+  # Historical scenarios (replay actual crisis windows)
+  historical:
+    covid_crash:
+      label: "COVID-19 Crash (Feb-Mar 2020)"
+      start_date: "2020-02-19"
+      end_date: "2020-03-23"
+
+    rate_hike_2022:
+      label: "2022 Rate Hike Selloff"
+      start_date: "2022-01-03"
+      end_date: "2022-06-16"
+
+    svb_crisis:
+      label: "SVB Banking Crisis (Mar 2023)"
+      start_date: "2023-03-08"
+      end_date: "2023-03-15"
+
+  # Hypothetical scenarios (per-asset shocks)
+  hypothetical:
+    tech_crash:
+      label: "Technology Sector Crash"
+      shocks:
+        AAPL: -25.0
+        MSFT: -25.0
+        GOOGL: -30.0
+        AMZN: -20.0
+        NVDA: -40.0
+        JPM: -5.0
+        JNJ: 2.0
+        V: -10.0
+
+    rate_spike:
+      label: "Interest Rate Spike (+200bps)"
+      shocks:
+        AAPL: -10.0
+        MSFT: -8.0
+        GOOGL: -12.0
+        AMZN: -15.0
+        NVDA: -10.0
+        JPM: 5.0
+        JNJ: -3.0
+        V: -5.0
+
+    uniform_drawdown:
+      label: "Uniform -20% Market Shock"
+      shocks:
+        AAPL: -20.0
+        MSFT: -20.0
+        GOOGL: -20.0
+        AMZN: -20.0
+        NVDA: -20.0
+        JPM: -20.0
+        JNJ: -20.0
+        V: -20.0
