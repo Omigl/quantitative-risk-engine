@@ -242,13 +242,18 @@ class RiskEngine:
             Keys: 'Historical_VaR_95', 'Historical_VaR_99', etc.
         """
         port_returns: pd.Series = self.compute_portfolio_returns(returns, weights)
+        clean_returns = port_returns.dropna()
 
         results: Dict[str, float] = {}
         for cl in self.confidence_levels:
-            percentile: float = (1 - cl) * 100
-            var_pct: float = float(np.percentile(port_returns.dropna(), percentile))
-            var_dollar: float = abs(var_pct) * portfolio_value
             key: str = f"Historical_VaR_{int(cl * 100)}"
+            if clean_returns.empty:
+                logger.warning("Portfolio returns series is empty after dropping NaNs in historical_var.")
+                results[key] = 0.0
+                continue
+            percentile: float = (1 - cl) * 100
+            var_pct: float = float(np.percentile(clean_returns, percentile))
+            var_dollar: float = abs(var_pct) * portfolio_value
             results[key] = round(var_dollar, 2)
             logger.info(
                 "%s: $%.2f (percentile=%.1f%%)", key, var_dollar, percentile,
@@ -285,9 +290,18 @@ class RiskEngine:
         Dict[str, float]
             Keys: 'MonteCarlo_VaR_95', 'MonteCarlo_VaR_99', etc.
         """
-        aligned_w: np.ndarray = weights.reindex(returns.columns).fillna(0.0).values
-        mean_returns: np.ndarray = returns.mean().values
-        cov_matrix: np.ndarray = returns.cov().values
+        clean_returns_df = returns.dropna(how='all', axis=1).dropna()
+        results: Dict[str, float] = {}
+
+        if clean_returns_df.empty:
+            logger.warning("Returns DataFrame is empty in Monte Carlo VaR.")
+            for cl in self.confidence_levels:
+                results[f"MonteCarlo_VaR_{int(cl * 100)}"] = 0.0
+            return results
+
+        aligned_w: np.ndarray = weights.reindex(clean_returns_df.columns).fillna(0.0).values
+        mean_returns: np.ndarray = clean_returns_df.mean().values
+        cov_matrix: np.ndarray = clean_returns_df.cov().values
 
         # Vectorized simulation: generate all N paths at once
         rng: np.random.Generator = np.random.default_rng(self.random_seed)
@@ -298,7 +312,6 @@ class RiskEngine:
         # Portfolio-level simulated returns: (N,) = (N, assets) @ (assets,)
         sim_port_returns: np.ndarray = simulated_returns @ aligned_w
 
-        results: Dict[str, float] = {}
         for cl in self.confidence_levels:
             percentile: float = (1 - cl) * 100
             var_pct: float = float(np.percentile(sim_port_returns, percentile))
@@ -402,6 +415,11 @@ class RiskEngine:
 
         results: Dict[str, float] = {}
         for cl in self.confidence_levels:
+            key: str = f"Historical_ES_{int(cl * 100)}"
+            if len(clean_returns) == 0:
+                logger.warning("Portfolio returns series is empty after dropping NaNs in historical_es.")
+                results[key] = 0.0
+                continue
             percentile: float = (1 - cl) * 100
             var_threshold: float = float(np.percentile(clean_returns, percentile))
             tail_returns: np.ndarray = clean_returns[clean_returns <= var_threshold]
@@ -411,7 +429,6 @@ class RiskEngine:
             else:
                 es_dollar = abs(float(np.mean(tail_returns))) * portfolio_value
 
-            key: str = f"Historical_ES_{int(cl * 100)}"
             results[key] = round(es_dollar, 2)
             logger.info(
                 "%s: $%.2f (tail observations=%d)", key, es_dollar, len(tail_returns),
@@ -447,9 +464,18 @@ class RiskEngine:
         Dict[str, float]
             Keys: 'MonteCarlo_ES_95', 'MonteCarlo_ES_99', etc.
         """
-        aligned_w: np.ndarray = weights.reindex(returns.columns).fillna(0.0).values
-        mean_returns: np.ndarray = returns.mean().values
-        cov_matrix: np.ndarray = returns.cov().values
+        clean_returns_df = returns.dropna(how='all', axis=1).dropna()
+        results: Dict[str, float] = {}
+
+        if clean_returns_df.empty:
+            logger.warning("Returns DataFrame is empty in Monte Carlo ES.")
+            for cl in self.confidence_levels:
+                results[f"MonteCarlo_ES_{int(cl * 100)}"] = 0.0
+            return results
+
+        aligned_w: np.ndarray = weights.reindex(clean_returns_df.columns).fillna(0.0).values
+        mean_returns: np.ndarray = clean_returns_df.mean().values
+        cov_matrix: np.ndarray = clean_returns_df.cov().values
 
         rng: np.random.Generator = np.random.default_rng(self.random_seed)
         simulated_returns: np.ndarray = rng.multivariate_normal(
@@ -457,7 +483,6 @@ class RiskEngine:
         )
         sim_port_returns: np.ndarray = simulated_returns @ aligned_w
 
-        results: Dict[str, float] = {}
         for cl in self.confidence_levels:
             percentile: float = (1 - cl) * 100
             var_threshold: float = float(np.percentile(sim_port_returns, percentile))

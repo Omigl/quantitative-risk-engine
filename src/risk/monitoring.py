@@ -177,10 +177,11 @@ class RiskMonitor:
 
             def _es_calc(x: np.ndarray) -> float:
                 """Compute ES for a single window."""
-                if len(x) < 2:
+                x_clean = x[~np.isnan(x)]
+                if len(x_clean) < 2:
                     return np.nan
-                threshold: float = float(np.percentile(x, quantile * 100))
-                tail: np.ndarray = x[x <= threshold]
+                threshold: float = float(np.percentile(x_clean, quantile * 100))
+                tail: np.ndarray = x_clean[x_clean <= threshold]
                 if len(tail) == 0:
                     return 0.0
                 return abs(float(np.mean(tail))) * portfolio_value

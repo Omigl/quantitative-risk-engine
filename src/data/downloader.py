@@ -95,6 +95,12 @@ class MarketDataDownloader:
                 "Verify tickers and network connectivity."
             )
 
+        # Drop columns that are completely empty/NaN
+        nan_cols = prices.columns[prices.isna().all()]
+        if len(nan_cols) > 0:
+            logger.warning("Dropping tickers that returned all NaNs: %s", list(nan_cols))
+            prices = prices.drop(columns=nan_cols)
+
         # Ensure column order matches the configured ticker list
         available: List[str] = [t for t in self.tickers if t in prices.columns]
         missing: List[str] = [t for t in self.tickers if t not in prices.columns]
